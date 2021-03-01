@@ -1,8 +1,12 @@
 <?php
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+/**
+*@author Heiter Developer <dev@heiterdeveloper.com>
+*@link https://github.com/HeiterDeveloper/SankhyaPHP
+*@copyright 2021 Heiter Developer
+*@license Aapache License 2.0
+*@license https://www.apache.org/licenses/LICENSE-2.0 Apache License 2.0
+**/
 
 
 class SankhyaPHP {
