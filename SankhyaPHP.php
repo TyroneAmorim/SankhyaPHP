@@ -105,7 +105,6 @@ class SankhyaPHP {
     $result = utf8_encode($result);
     $res = str_replace("null", "\"\"", $result);
     $res = preg_replace("/\s+\"/", "\"", $res);
-    $res = preg_replace("/N.O/", "NÃO", $res);
     $res = preg_replace("/(\t\n)/", "", $res);
 
     $dados = json_decode($res, true);
