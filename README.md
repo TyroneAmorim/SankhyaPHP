@@ -1,4 +1,4 @@
 # SankhyaPHP
 
-Classe php para executar queries sql pela api do sistema Sankhya.
+Classe PHP para fazer requisições na API do sistema Sankhya.
 
