@@ -11,126 +11,90 @@
 
 class SankhyaPHP {
 
-  const XML_LOGIN = "PHNlcnZpY2VSZXF1ZXN0IHNlcnZpY2VOYW1lPSJNb2JpbGVMb2dpblNQLmxvZ2luIj4KPHJlcXVlc3RCb2R5Pgo8Tk9NVVNVPiVVU0VSJTwvTk9NVVNVPgo8SU5URVJOTz4lUEFTUyU8L0lOVEVSTk8+CjwvcmVxdWVzdEJvZHk+Cjwvc2VydmljZVJlcXVlc3Q+";
-  const JSON_QUERY = "ewogICJzZXJ2aWNlTmFtZSI6ICJEYkV4cGxvcmVyU1AuZXhlY3V0ZVF1ZXJ5IiwKICAicmVxdWVzdEJvZHkiOiB7CiAgICAic3FsIjogIiVRVUVSWSUiCiAgfQp9";
-
-  private $ipProducao;
-  private $idLogin;
-  private $user;
-  private $pass;
-  private $lastError;
-
-  function __construct($host, $user, $pass){
-
-    $this->ipProducao = $host;
-    $this->user = $user;
-    $this->pass = $pass;
-  }
-
-  public function getLastError(){
-    return $this->lastError;
-  }
-
-  private function getXML($xmlStr){
-    return simplexml_load_string($xmlStr);
-  }
-
-  public function login(){
-
-    $ch = curl_init();
-
-    curl_setopt($ch, CURLOPT_URL, "http://".$this->ipProducao."/mge/service.sbr?serviceName=MobileLoginSP.login");
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_POST, 1);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, str_replace(array("%USER%", "%PASS%"), array($this->user, $this->pass), base64_decode(self::XML_LOGIN)));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/xml'));
-
-    $result=curl_exec($ch);
-
-    if(!$result){
-      $this->lastError = "Ocorreu um erro. Por favor, verifique seus parâmetros de configuração.";
-      return false;
+    private $endereco;
+    private $idLogin;
+    private $usuario;
+    private $senha;
+    private $error;
+    
+    function __construct($usuario, $senha, $endereco){
+        
+        $this->usuario = $usuario;
+        $this->senha = $senha;
+        $this->endereco = $endereco;
+    }
+    
+    public function getError(){
+        return $this->error;
     }
 
-    $dados = $this->getXML($result);
-
-    if(isset($dados->responseBody) && $dados->attributes()->status == 1){
-
-      $this->idLogin = $dados->responseBody->jsessionid;
-      return true;
+    public function getXML($xmlStr) {
+        return simplexml_load_string($xmlStr);
     }
-    else if($dados->attributes()->status == 0){
-      $this->lastError = "Credenciais inválidas. Verifique seu usuário e senha.";
-    }
-  }
-
-  public function logout(){
-
-    $ch = curl_init();
-
-    curl_setopt($ch, CURLOPT_URL, "http://".$this->ipProducao."/mge/service.sbr?serviceName=MobileLoginSP.logout");
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_POST, 1);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/xml', "Cookie: JSESSIONID=".$this->idLogin));
-
-    $result=curl_exec($ch);
-    $dados = $this->getXML($result);
-
-    if($dados->attributes()->status == 1){
-      return true;
-    }
-    else if($dados->attributes()->status == 0){
-      return false;
-    }
-  }
-
-  public function query($query){
-
-    $ch = curl_init();
-
-    curl_setopt($ch, CURLOPT_URL, "http://".$this->ipProducao."/mge/service.sbr?serviceName=DbExplorerSP.executeQuery");
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_POST, 1);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, str_replace("%QUERY%", $query, base64_decode(self::JSON_QUERY)));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json', "Cookie: JSESSIONID=".$this->idLogin));
-
-    $result = curl_exec($ch);
-
-    if(!$result){
-      $this->lastError = "Ocorreu um erro. Por favor, verifique sua query.";
-      return false;
+    
+    public function getIdLogin(){
+        return $this->idLogin;
     }
 
+    /**
+     * Envia uma requisição para API
+     * @param type $path url do serviço
+     * @param type $headers cabeçalhos http
+     * @param type $body corpo da requisição
+     * @return SimpleXMLElement
+     */
+    public function sendToServer($path, $headers, $body) {
 
-    $result = utf8_encode($result);
-    $res = str_replace("null", "\"\"", $result);
-    $res = preg_replace("/\s+\"/", "\"", $res);
-    $res = preg_replace("/(\t\n)/", "", $res);
+        $ch = curl_init();
 
-    $dados = json_decode($res, true);
+        curl_setopt($ch, CURLOPT_URL, "http://" . $this->endereco . $path);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, (array) $headers);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
 
-    if(!$dados){
-      $dados = $this->getXML($res);
-      $this->lastError = utf8_encode(base64_decode($dados->statusMessage));
-      return false;
+        $result = curl_exec($ch);
+
+        return $result;
     }
-    else{
-      $dadosCols = [];
-      foreach($dados['responseBody']['fieldsMetadata'] as $key){
-        $dadosCols[] = $key['name'];
-      }
 
-      $dadosOut = [];
+    /**
+     * Efetua login na API e guarda o token de sessão
+     * @return boolean
+     */
+    public function login() {
 
-      foreach($dados['responseBody']['rows'] as $key=>$val){
-        foreach($val as $k=>$v){
-          $dadosOut[$key][$dadosCols[$k]] = $v;
+        $xmlLogin = new SimpleXMLElement("<serviceRequest/>");
+
+        $xmlLogin->addAttribute("serviceName", "MobileLoginSP.login");
+
+        $reqBody = $xmlLogin->addChild("requestBody");
+        $reqBody->addChild("NOMUSU", $this->usuario);
+        $reqBody->addChild("INTERNO", $this->senha);
+        $strXmlLogin = $xmlLogin->asXML();
+
+
+        $dataXML = $this->getXML($this->sendToServer("/mge/service.sbr?serviceName=MobileLoginSP.login", "Content-Type: application/xml", $strXmlLogin));
+
+        if (isset($dataXML->responseBody)) {
+            $this->idLogin = $dataXML->responseBody->jsessionid;
+            return true;
+        } else {
+            $this->error = base64_decode((string)$dataXML->statusMessage);
+            return false;
         }
-      }
-
-      return array("numRows"=>count($dadosOut), "rows"=>$dadosOut);
     }
-  }
+
+    /**
+     * Efetua logout na API
+     * @return SimpleXMLElement
+     */
+    public function logout() {
+
+        $data = $this->sendToServer("/mge/service.sbr?serviceName=MobileLoginSP.logout", array("Content-Type: application/xml", "Cookie: JSESSIONID=" . $this->idLogin), "");
+        $dataXML = $this->getXML($data);
+        return $dataXML;
+    }
 }
 
 ?>
